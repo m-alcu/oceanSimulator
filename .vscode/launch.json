@@ -1,0 +1,48 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug: Tests (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Debug/test_math.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Build: Tests"
+        },
+        {
+            "name": "Debug: Tests - Single Test (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Debug/test_math.exe",
+            "args": ["--gtest_filter=${input:testFilter}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Build: Tests"
+        },
+        {
+            "name": "Debug: 3DEngine (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Debug/3DEngine.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFilter",
+            "type": "promptString",
+            "description": "Test filter (e.g., Vec3Test.*, SmathTest.DotProduct)",
+            "default": "*"
+        }
+    ]
+}

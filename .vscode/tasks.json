@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake: Configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["-S", ".", "-B", "build"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build: Tests",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build", "--target", "test_math", "--config", "Debug"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile",
+            "dependsOn": []
+        },
+        {
+            "label": "Build: Tests (Release)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build", "--target", "test_math", "--config", "Release"],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Run: Tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/bin/Debug/test_math.exe",
+            "args": [],
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "Build: Tests"
+        },
+        {
+            "label": "Run: Tests (Release)",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/bin/Release/test_math.exe",
+            "args": [],
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "Build: Tests (Release)"
+        },
+        {
+            "label": "Run: CTest",
+            "type": "shell",
+            "command": "ctest",
+            "args": ["-C", "Debug", "--output-on-failure"],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": "test",
+            "problemMatcher": [],
+            "dependsOn": "Build: Tests"
+        },
+        {
+            "label": "Build: 3DEngine",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "build", "--config", "Release"],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
