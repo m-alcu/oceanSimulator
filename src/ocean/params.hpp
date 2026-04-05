@@ -18,8 +18,8 @@ struct OceanParams {
     int          waveCount     = 6;
     GerstnerWave waves[8];
 
-    Vec3  shallowColor   = {0.04f, 0.46f, 0.62f};
-    Vec3  deepColor      = {0.01f, 0.12f, 0.38f};
+    Vec3  shallowColor   = {0.02f, 0.20f, 0.26f};   // muted teal, nearly clear
+    Vec3  deepColor      = {0.01f, 0.06f, 0.20f};   // dark blue, seen only in deep
     float foamThreshold  = 1.1f;
     float waterLevel     = 0.0f;  // world-space Y of the sea surface
 
@@ -38,22 +38,24 @@ struct OceanParams {
     static OceanParams defaultParams() {
         OceanParams p;
         p.waveCount = 8;
-        // Primary swell from NW  (0°)
-        p.waves[0] = { 1.40f, 64.f, 0.22f,  0.00f, 1.00f };
-        // Secondary swell from NE (~75°) — opposes primary slightly
-        p.waves[1] = { 0.75f, 46.f, 0.20f,  1.30f, 0.92f };
-        // Storm swell from SW (~200°) — head-on cross
-        p.waves[2] = { 0.60f, 38.f, 0.18f,  3.49f, 0.85f };
-        // Wind chop NNE (~30°)
-        p.waves[3] = { 0.35f, 14.f, 0.42f,  0.52f, 1.55f };
-        // Wind chop from W (~270°)
-        p.waves[4] = { 0.28f, 11.f, 0.40f,  4.71f, 1.65f };
-        // Short chop SE (~135°)
-        p.waves[5] = { 0.20f,  7.f, 0.38f,  2.36f, 1.85f };
-        // Fine ripple NW-ish
-        p.waves[6] = { 0.12f,  4.f, 0.30f, -0.42f, 2.20f };
-        // Fine ripple S (~180°)
-        p.waves[7] = { 0.09f,  3.f, 0.28f,  3.14f, 2.40f };
+        // Spread directions evenly across ~270° and use incommensurable
+        // wavelengths (no common divisor) to push the tiling period far out.
+        // Primary swell N
+        p.waves[0] = { 1.40f,  67.f, 0.20f,  0.00f, 1.00f };
+        // Swell NE (~50°)
+        p.waves[1] = { 0.80f,  53.f, 0.18f,  0.87f, 0.94f };
+        // Cross-swell NW (~−55°)
+        p.waves[2] = { 0.65f,  41.f, 0.17f, -0.96f, 0.88f };
+        // Wind chop NNE (~25°), shorter
+        p.waves[3] = { 0.38f,  17.f, 0.40f,  0.44f, 1.60f };
+        // Wind chop WNW (~−70°)
+        p.waves[4] = { 0.30f,  13.f, 0.38f, -1.22f, 1.70f };
+        // Short chop ENE (~65°)
+        p.waves[5] = { 0.22f,   8.3f, 0.35f,  1.13f, 1.90f };
+        // Fine ripple at odd angle (~−30°)
+        p.waves[6] = { 0.13f,   5.1f, 0.28f, -0.52f, 2.30f };
+        // Fine ripple (~110°)
+        p.waves[7] = { 0.09f,   3.7f, 0.25f,  1.92f, 2.55f };
         return p;
     }
 };

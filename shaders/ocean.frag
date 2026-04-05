@@ -144,46 +144,97 @@ void main() {
     vec3 H = normalize(V + L);
 
     float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
     float NdotH = max(dot(N, H), 0.0);
 
-    // ----------------------------------------------------------------
-    // Water colour — gets more turquoise / shallow near shore
-    // ----------------------------------------------------------------
-    float depthBlend = clamp(vWaveHeight * 0.25 + 0.5, 0.0, 1.0);
-    vec3  waterColor = mix(uDeepColor, uShallowColor, depthBlend);
-
-    // Extra tint in the shallow shore zone — kept subtle and blue-leaning
-    float shoreBlend = smoothstep(-30.0, -2.0, vZl);
-    waterColor = mix(waterColor, vec3(0.05, 0.50, 0.65), shoreBlend * 0.25);
-
-    float distBlend = 1.0 - exp(-dist * 0.004);
-    waterColor = mix(waterColor, uDeepColor, distBlend * 0.45);
+    float approxDepth = max(0.0, -vZl);
 
     // ----------------------------------------------------------------
-    // Fresnel + reflection
+    // Water body tint — scattering of the water column.
+    // Real water has NO intrinsic bright blue in the shallows — that
+    // comes from the seafloor showing through (handled by alpha).
+    // Only deep water has its own colour from volumetric scattering.
     // ----------------------------------------------------------------
-    // F0 = 0.04 is physically correct for water; we add a small artistic
-    // boost (0.06) so the sky/sun reflection is visible at moderate angles.
-    float F     = fresnel(NdotV, 0.06);
-    vec3  R     = reflect(-V, N);
-    vec3  refl  = skyColor(R);
-    // Blend: deep colour → sky reflection as F grows with viewing angle
-    vec3  color = mix(waterColor, refl, F);
+    float depthT   = 1.0 - exp(-approxDepth * 0.07);
+    vec3 waterBody = mix(
+        vec3(0.016, 0.085, 0.11),    // shallow: barely tinted, near-clear
+        uDeepColor * 0.55,            // deep: colour param, dimmed by absorption
+        depthT
+    );
 
     // ----------------------------------------------------------------
-    // Specular — three lobes so the sun forms a visible golden path
+    // Fresnel — physically correct F0=0.04.
+    // At grazing angle (NdotV→0) F→1: pure mirror.
+    // Looking straight down (NdotV=1) F=0.04: almost transparent.
     // ----------------------------------------------------------------
-    float NdotL    = max(dot(N, L), 0.0);
-    float spec     = pow(NdotH, 512.0) * F;           // razor-sharp glint
-    float specMid  = pow(NdotH,  80.0) * F * 0.40;   // sun column sparkle
-    float specWide = pow(NdotH,  18.0) * F * 0.12;   // broad scattered halo
-    color += uSunColor * (spec * 1.4 + specMid + specWide) * max(NdotL, 0.15);
+    float F    = fresnel(NdotV, 0.04);
+    vec3  R    = reflect(-V, N);
+    vec3  refl = skyColor(R);
+
+    // Base: transparent water body + sky/sun mirror via Fresnel
+    vec3 color = mix(waterBody, refl, F);
 
     // ----------------------------------------------------------------
-    // Subsurface scatter
+    // Specular — sun disk sharply reflected in wave facets
     // ----------------------------------------------------------------
-    float scatter = max(dot(H, L), 0.0) * max(vWaveHeight * 0.25, 0.0);
-    color += vec3(0.0, 0.28, 0.22) * scatter * uSunColor;
+    float spec = pow(NdotH, 450.0);
+    color += uSunColor * spec * 2.5;
+
+    // ----------------------------------------------------------------
+    // Sun glitter path + rays
+    //
+    // Rays on real water are wave-group bands seen from above:
+    // crests/troughs create alternating reflective corridors that
+    // appear as parallel bright fingers running AWAY from the camera
+    // toward the sun's horizon point.
+    //
+    // We model this as:
+    //   pathMask  — cone from camera toward sun's horizontal projection
+    //   sparkle   — noise-based dancing facets along the path
+    //   rays      — lateral (across-path) sine bands with noise warping,
+    //               which project as spokes radiating from the camera
+    // ----------------------------------------------------------------
+    vec2 sunH    = normalize(uSunDir.xz + vec2(1e-5));
+    vec2 sunPerp = vec2(-sunH.y, sunH.x);
+
+    vec2  toFrag   = vWorldPos.xz - uCamPos.xz;
+    float fragDist = length(toFrag) + 0.01;
+
+    float alongPath  = dot(toFrag / fragDist, sunH);
+    float acrossPath = dot(toFrag, sunPerp);
+    // Path narrows toward horizon (perspective convergence)
+    float normAcross = acrossPath / (sqrt(fragDist) * 4.2 + 1.0);
+    float pathMask   = smoothstep(0.30, 0.88, alongPath)
+                     * exp(-normAcross * normAcross * 0.65);
+
+    // Sparkle: two noise layers at different speeds — bright only when both peak
+    vec2 d1 = sunH * uTime * 2.6  + sunPerp * uTime * 0.25;
+    vec2 d2 = sunH * uTime * 1.4  - sunPerp * uTime * 0.45 + vec2(4.1, 1.7);
+    float s1 = valueNoise(vWorldPos.xz * 1.3 + d1);
+    float s2 = valueNoise(vWorldPos.xz * 2.5 - d2);
+    float sparkle = pow(s1 * s2, 2.4) * 4.0;   // rare, intense flashes
+
+    // Rays: bands across the path (= radial spokes in perspective).
+    // Two noise layers warp the band phase so they look organic, not ruled.
+    float bandCoord = dot(toFrag, sunPerp);
+    float bn1 = (valueNoise(vec2(bandCoord * 0.055,        uTime * 0.11 + 1.7)) - 0.5) * 4.0;
+    float bn2 = (valueNoise(vec2(bandCoord * 0.130 + 5.3,  uTime * 0.07       )) - 0.5) * 2.5;
+    // sin with noise phase → irregular spacing; pow sharpens peaks
+    float rays = pow(max(0.0, sin(bandCoord * 0.25 + bn1 + bn2)), 3.5)
+               * smoothstep(0.0, 15.0, fragDist);   // fade at camera feet
+
+    // Sun elevation: low sun = long dramatic path; overhead = compact patch
+    float sunElev   = clamp(uSunDir.y, 0.02, 1.0);
+    float elevScale = smoothstep(0.02, 0.18, sunElev) * (1.0 - sunElev * 0.38);
+
+    float glitter = pathMask * (sparkle * 0.60 + rays * 0.40) * elevScale;
+    color += uSunColor * vec3(1.0, 0.93, 0.68) * glitter * 2.4;
+
+    // ----------------------------------------------------------------
+    // Subsurface scatter — backlit translucent wave crests
+    // ----------------------------------------------------------------
+    float scatter = max(dot(H, L), 0.0) * max(vWaveHeight * 0.2, 0.0);
+    color += vec3(0.02, 0.14, 0.12) * scatter * uSunColor;
 
     // ----------------------------------------------------------------
     // Open-ocean crest foam
@@ -254,7 +305,6 @@ void main() {
     //
     // depthOpacity: exponential absorption so shallow water is clear.
     //   Keyed on -vZl because deeper (more negative vZl) = more water above.
-    float approxDepth  = max(0.0, -vZl);
     float depthOpacity = 1.0 - exp(-approxDepth * 0.13);  // 0=crystal, 1=opaque
     float shoreAlpha   = smoothstep(-5.0, -14.0, vZl);    // gone by vZl=-5
     float alpha        = shoreAlpha * mix(0.15, 1.0, depthOpacity);
