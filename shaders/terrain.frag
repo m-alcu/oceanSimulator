@@ -58,10 +58,36 @@ void main() {
     mat = mix(mat, darkRock, smoothstep(0.68, 0.82, slope));
 
     // ----------------------------------------------------------------
-    // Wet-sand strip right at the waterline (vZl -3 .. 2)
-    // Darker, more saturated, slightly reflective
+    // Wet-sand strip — animates with wave run-up / recession.
+    // Same timing constants as ocean.frag swashWave.
     // ----------------------------------------------------------------
-    float wetBlend = smoothstep(2.0, -1.0, vZl) * smoothstep(-4.0, -1.5, vZl);
+    const float P[5]  = float[5](8.2,  10.5, 6.9,  12.1, 7.6 );
+    const float PH[5] = float[5](0.0,   2.3, 4.7,   1.1, 6.0 );
+    const float XP[5] = float[5](0.0,   1.9, 3.7,   5.5, 7.3 );
+
+    float wetFront = -4.0;  // default: just at waterline
+    for (int i = 0; i < 5; i++) {
+        float xShift = sin(vWorldPos.x * 0.05 + XP[i]) * 3.5
+                     + sin(vWorldPos.x * 0.13 + XP[i] * 2.1) * 1.2;
+        float tLocal = fract(fract((uTime + PH[i]) / P[i]) + xShift * 0.02);
+
+        float front;
+        if (tLocal < 0.42) {
+            front = -32.0;                                      // wave still offshore
+        } else if (tLocal < 0.56) {
+            float s = sqrt((tLocal - 0.42) / 0.14);
+            front = mix(-2.0, 10.0, s);                        // surging up the beach
+        } else {
+            float s = (tLocal - 0.56) / 0.44;
+            s = s * s;
+            front = mix(10.0, -4.0, s);                        // draining back
+        }
+        wetFront = max(wetFront, front);
+    }
+
+    // Wet band: from just below waterline up to the current wave front
+    float wetBlend = smoothstep(wetFront + 1.5, wetFront - 1.5, vZl)
+                   * smoothstep(-6.0, -1.0, vZl);   // don't wet deeply submerged terrain
     mat = mix(mat, wetSand * 0.68, wetBlend);
 
     // ----------------------------------------------------------------

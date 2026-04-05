@@ -24,9 +24,9 @@ struct OceanParams {
     float waterLevel     = 0.0f;  // world-space Y of the sea surface
     float fogDist        = 620.0f; // distance at which fog is fully opaque
 
-    float sunElevation   = 0.55f;  // radians from horizon
+    float sunElevation   = 0.06f;  // radians from horizon — sunset
     float sunAzimuth     = 0.8f;   // radians
-    Vec3  sunColor       = {1.00f, 0.95f, 0.82f};
+    Vec3  sunColor       = {1.00f, 0.52f, 0.18f};  // deep orange sunset
 
     bool  wireframe      = false;
 

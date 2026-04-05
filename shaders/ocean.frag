@@ -61,21 +61,32 @@ float fresnel(float cosTheta, float F0) {
 }
 
 vec3 skyColor(vec3 dir) {
-    float el     = dir.y;
-    vec3 zenith  = vec3(0.08, 0.28, 0.75);
-    vec3 horizon = vec3(0.55, 0.73, 0.95);
-    vec3 sky     = mix(horizon, zenith, smoothstep(0.0, 0.45, max(el, 0.0)));
+    float el      = dir.y;
+    float sunElev = uSunDir.y;
+    float sunsetT = 1.0 - smoothstep(-0.05, 0.30, sunElev);
 
-    // Sun — same disk/corona parameters as sky.frag so reflections match
-    float sunDot  = max(dot(dir, uSunDir), 0.0);
-    float sunDisk = smoothstep(0.9994, 1.0,   sunDot);
-    float corona  = smoothstep(0.9975, 0.9994, sunDot) * 0.75;
-    float sunGlow = pow(sunDot, 7.0) * 0.65;
-    float sunHaze = pow(sunDot, 22.0) * 0.35;
+    vec3 zenith  = mix(vec3(0.08, 0.26, 0.72), vec3(0.05, 0.10, 0.28), sunsetT);
+    vec3 midSky  = mix(vec3(0.25, 0.52, 0.88), vec3(0.38, 0.20, 0.12), sunsetT);
+    vec3 horizon = mix(vec3(0.58, 0.76, 0.96), vec3(0.92, 0.42, 0.08), sunsetT);
 
-    sky += uSunColor * sunDisk * 6.0;
-    sky += uSunColor * vec3(1.0, 0.92, 0.70) * corona;
-    sky += uSunColor * vec3(1.0, 0.80, 0.45) * sunGlow;
+    vec3 sky = mix(horizon, midSky, smoothstep(0.0, 0.15, max(el, 0.0)));
+    sky = mix(sky, zenith, smoothstep(0.15, 0.55, max(el, 0.0)));
+
+    // Same disk/corona as sky.frag so water reflections match
+    float sunDot  = dot(dir, uSunDir);
+    float sunDisk = smoothstep(0.9982, 0.9993, sunDot);
+    float corona1 = smoothstep(0.9960, 0.9982, sunDot) * 0.80;
+    float corona2 = smoothstep(0.9920, 0.9960, sunDot) * 0.40;
+    float sunGlow = pow(max(sunDot, 0.0), mix(7.0, 18.0, sunsetT)) * mix(0.55, 1.2, sunsetT);
+    float sunHaze = pow(max(sunDot, 0.0), 40.0) * 0.30;
+
+    float limbT    = smoothstep(0.9982, 1.0, sunDot);
+    vec3 diskColor = mix(uSunColor * 0.85, vec3(1.0, 0.98, 0.90), limbT);
+
+    sky += diskColor * sunDisk * 8.0;
+    sky += uSunColor * vec3(1.0, 0.88, 0.65) * corona1;
+    sky += uSunColor * vec3(1.0, 0.72, 0.35) * corona2;
+    sky += uSunColor * vec3(1.0, 0.70, 0.30) * sunGlow;
     sky += uSunColor * sunHaze;
     return sky;
 }
@@ -98,12 +109,12 @@ void swashWave(float t, float x, float phaseX,
     float tLocal = fract(t + xShift * 0.02);
 
     if (tLocal < 0.42) {
-        // --- Approach: wave crest travels from deep (-22) to break (-2) ---
+        // --- Approach: wave crest travels from deep (-32) to break (-2) ---
         float s  = tLocal / 0.42;
         s        = s * s * (3.0 - 2.0 * s);   // smoothstep
-        foamZl   = mix(-22.0, -2.0, s);
-        width    = 2.8 - s * 0.8;              // narrows as it steepens
-        bright   = 0.55 + s * 0.35;            // brightens at break
+        foamZl   = mix(-32.0, -2.0, s);
+        width    = 4.0 - s * 2.0;              // wide crest that narrows at break
+        bright   = 0.75 + s * 0.25;            // already white offshore, peaks at break
     } else if (tLocal < 0.56) {
         // --- Breaking + run-up: foam surges up the beach ---
         float s  = (tLocal - 0.42) / 0.14;
@@ -255,7 +266,8 @@ void main() {
     const float PH[5] = float[5](0.0,   2.3, 4.7,   1.1, 6.0 );
     const float XP[5] = float[5](0.0,   1.9, 3.7,   5.5, 7.3 );
 
-    float beachFoam = 0.0;
+    float beachFoam  = 0.0;
+    float waterFront = -30.0;  // furthest inland position of any active wave
 
     for (int i = 0; i < 5; i++) {
         float t = fract((uTime + PH[i]) / P[i]);
@@ -268,14 +280,18 @@ void main() {
         float strip = exp(-d * d / (width * width)) * bright;
 
         // Only active in the shore zone — kill it in deep ocean and far inland
-        strip *= smoothstep(-26.0, -16.0, vZl);   // fade in from deep
+        strip *= smoothstep(-38.0, -26.0, vZl);   // fade in from deep (matches -32 start)
         strip *= smoothstep(14.0,   8.0,  vZl);   // fade on dry land
 
         // Natural x-variation: noise breaks perfect along-shore uniformity
         float xNoise = valueNoise(vec2(vWorldPos.x * 0.07 + XP[i], uTime * 0.18 + PH[i]));
-        strip *= 0.5 + xNoise * 0.7;
+        strip *= 0.70 + xNoise * 0.45;  // higher minimum so foam stays visible offshore
 
         beachFoam = max(beachFoam, strip);
+
+        // Track furthest active water front for alpha extension
+        if (bright > 0.05)
+            waterFront = max(waterFront, foamZl);
     }
 
     // Slightly yellow-white foam (sunlit bubbles), not pure white
@@ -311,8 +327,13 @@ void main() {
     // depthOpacity: exponential absorption so shallow water is clear.
     //   Keyed on -vZl because deeper (more negative vZl) = more water above.
     float depthOpacity = 1.0 - exp(-approxDepth * 0.13);  // 0=crystal, 1=opaque
-    float shoreAlpha   = smoothstep(-5.0, -14.0, vZl);    // gone by vZl=-5
-    float alpha        = shoreAlpha * mix(0.15, 1.0, depthOpacity);
+    // Dynamic shore alpha: retreats and advances with the wave run-up.
+    // waterFront tracks the furthest inland position of any active wave.
+    // Below waterFront the ocean mesh extends (wave on beach), above it retreats.
+    float dynamicCutoff = max(-5.0, waterFront);
+    float shoreAlpha    = smoothstep(dynamicCutoff + 0.8, dynamicCutoff - 8.0, vZl);
+    // Thin water sheet on dry sand: keep minimum alpha visible (swash layer)
+    float alpha         = shoreAlpha * mix(0.30, 1.0, depthOpacity);
 
     FragColor = vec4(color, alpha);
 }

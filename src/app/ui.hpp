@@ -18,7 +18,7 @@ inline void drawUI(OceanParams& p, Camera& cam, std::function<bool()> reloadShad
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader("Sun", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::SliderFloat("Elevation##sun", &p.sunElevation, 0.05f, 1.55f);
+        ImGui::SliderFloat("Elevation##sun", &p.sunElevation, -0.20f, 1.55f);
         ImGui::SliderFloat("Azimuth##sun",  &p.sunAzimuth,   0.f,  6.28f);
         ImGui::ColorEdit3("Sun Color",  (float*)&p.sunColor);
     }
