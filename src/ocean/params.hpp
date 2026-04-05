@@ -21,6 +21,7 @@ struct OceanParams {
     Vec3  shallowColor   = {0.04f, 0.46f, 0.62f};
     Vec3  deepColor      = {0.01f, 0.12f, 0.38f};
     float foamThreshold  = 1.1f;
+    float waterLevel     = 0.0f;  // world-space Y of the sea surface
 
     float sunElevation   = 0.55f;  // radians from horizon
     float sunAzimuth     = 0.8f;   // radians

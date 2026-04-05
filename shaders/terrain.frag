@@ -11,6 +11,7 @@ uniform vec3  uCamPos;
 uniform vec3  uShallowColor;
 uniform vec3  uDeepColor;
 uniform float uTime;
+uniform float uWaterLevel;
 
 out vec4 FragColor;
 
@@ -66,7 +67,7 @@ void main() {
     // Underwater terrain — shade as seafloor seen through water
     // ----------------------------------------------------------------
     // waterDepth: 0 at surface, grows as terrain goes deeper
-    float waterDepth = max(0.0, -h);   // depth below sea level (y=0)
+    float waterDepth = max(0.0, uWaterLevel - h);
 
     // Absorption: exponential decay of light through water
     // Red channel absorbs fastest, blue slowest
@@ -126,7 +127,10 @@ void main() {
     // mesh's opaque water colour takes over cleanly.
     // Below zl = -18 the terrain is invisible (pure ocean colour).
     // ----------------------------------------------------------------
-    float alpha = 1.0 - smoothstep(-10.0, -18.0, vZl);
+    // Terrain fades out as the ocean mesh takes over in deep water.
+    // Must match the ocean's shoreAlpha range (-5 .. -14) so neither
+    // mesh is fully invisible at the same depth simultaneously.
+    float alpha = 1.0 - smoothstep(-5.0, -18.0, vZl);
 
     FragColor = vec4(color, alpha);
 }

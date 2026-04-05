@@ -41,6 +41,7 @@ inline void drawUI(OceanParams& p, Camera& cam, std::function<bool()> reloadShad
     }
 
     if (ImGui::CollapsingHeader("Water", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat("Water Level",    &p.waterLevel,    -10.f, 20.f);
         ImGui::ColorEdit3("Shallow",         (float*)&p.shallowColor);
         ImGui::ColorEdit3("Deep",            (float*)&p.deepColor);
         ImGui::SliderFloat("Foam Threshold", &p.foamThreshold, 0.1f, 5.f);

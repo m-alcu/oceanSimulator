@@ -158,6 +158,7 @@ int main() {
         terrainShader.setVec3 ("uShallowColor", ocean.shallowColor);
         terrainShader.setVec3 ("uDeepColor",    ocean.deepColor);
         terrainShader.setFloat("uTime",         simTime);
+        terrainShader.setFloat("uWaterLevel",   ocean.waterLevel);
         terrainMesh.draw();
 
         // --- Ocean ---
@@ -188,6 +189,7 @@ int main() {
         oceanShader.setVec3 ("uShallowColor", ocean.shallowColor);
         oceanShader.setVec3 ("uDeepColor",    ocean.deepColor);
         oceanShader.setFloat("uFoamThreshold",ocean.foamThreshold);
+        oceanShader.setFloat("uWaterLevel",   ocean.waterLevel);
         oceanMesh.draw();
 
         // --- ImGui ---

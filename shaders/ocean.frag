@@ -239,17 +239,25 @@ void main() {
     color = mix(color, vec3(0.62, 0.78, 0.93), haze * 0.30);
 
     // ----------------------------------------------------------------
-    // Alpha — two components:
-    //   shoreAlpha : fades the mesh out at the waterline (prevents
-    //                the flat plane from visually sinking into the beach)
-    //   bodyAlpha  : depth-based translucency so shallow water is
-    //                see-through and the lit seafloor shows below
-    // approxDepth estimates the water column using the same slope as
-    // terrain_mesh.hpp (zl * 0.09 for the seafloor).
-    float approxDepth  = max(0.0, -vZl * 0.09);
-    float depthOpacity = 1.0 - exp(-approxDepth * 0.55);  // 0=clear, 1=opaque
-    float shoreAlpha   = smoothstep(0.5, -6.0, vZl);
-    float alpha        = shoreAlpha * mix(0.28, 1.0, depthOpacity);
+    // Alpha — depth-based translucency + shore fade
+    //
+    // The terrain shader already renders the seafloor with underwater
+    // colour/caustics/fog.  The ocean mesh only needs to sit on top as
+    // a translucent water surface; it must vanish completely before the
+    // terrain rises above sea level so it never pokes through the ground.
+    //
+    // Handoff budget (vZl, shore-relative):
+    //   < -18  : ocean fully opaque   (terrain invisible below)
+    //   -18..-10 : both blend (terrain fades in from its own alpha)
+    //   -10..-5  : ocean fades out    (terrain's underwater shading visible)
+    //   > -5   : ocean gone           (no geometry intersection possible)
+    //
+    // depthOpacity: exponential absorption so shallow water is clear.
+    //   Keyed on -vZl because deeper (more negative vZl) = more water above.
+    float approxDepth  = max(0.0, -vZl);
+    float depthOpacity = 1.0 - exp(-approxDepth * 0.13);  // 0=crystal, 1=opaque
+    float shoreAlpha   = smoothstep(-5.0, -14.0, vZl);    // gone by vZl=-5
+    float alpha        = shoreAlpha * mix(0.15, 1.0, depthOpacity);
 
     FragColor = vec4(color, alpha);
 }

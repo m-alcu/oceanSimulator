@@ -8,6 +8,7 @@ uniform mat4  uView;
 uniform mat4  uProj;
 uniform float uTime;
 uniform int   uWaveCount;
+uniform float uWaterLevel;
 
 // Each vec4: (amplitude, wavelength, steepness, speed)
 uniform vec4 uWave0[8];
@@ -33,6 +34,7 @@ float shorelineZv(float x) {
 
 void main() {
     vec3 pos = aPos;
+    pos.y += uWaterLevel;
 
     // ---- Shoaling: compute before Gerstner loop (uses rest position) ----
     float sz = shorelineZv(pos.x);
