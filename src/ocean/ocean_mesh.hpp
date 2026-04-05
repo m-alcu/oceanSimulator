@@ -7,10 +7,10 @@
 // zFar:   far edge (negative, toward open ocean)
 // zNear:  near edge (slightly into beach, positive)
 inline void buildOceanMesh(Mesh& mesh,
-                            int   Nx    = 300,
-                            int   Nz    = 300,
-                            float xHalf = 200.f,
-                            float zFar  = -300.f,
+                            int   Nx    = 340,
+                            int   Nz    = 340,
+                            float xHalf = 900.f,
+                            float zFar  = -900.f,
                             float zNear =  28.f)  // must reach past shorelineZ max (~+16)
 {
     std::vector<Vertex>   verts;

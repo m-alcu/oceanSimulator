@@ -13,6 +13,7 @@ uniform vec3  uShallowColor;
 uniform vec3  uDeepColor;
 uniform float uFoamThreshold;
 uniform float uTime;
+uniform float uFogDist;
 
 out vec4 FragColor;
 
@@ -237,13 +238,12 @@ void main() {
     color += vec3(0.02, 0.14, 0.12) * scatter * uSunColor;
 
     // ----------------------------------------------------------------
-    // Open-ocean crest foam
+    // Crest brightening — no white foam, just stronger mirror reflection
+    // on high wave faces where the surface tilts toward the sun.
     // ----------------------------------------------------------------
-    float foamNoise = valueNoise(vWorldPos.xz * 0.15 + uTime * 0.12) * 0.6
-                    + valueNoise(vWorldPos.xz * 0.38 - uTime * 0.08) * 0.4;
-    float foamH = vWaveHeight - foamNoise * 0.4;
-    float foam  = smoothstep(uFoamThreshold * 0.75, uFoamThreshold * 1.1, foamH);
-    color = mix(color, vec3(1.0), foam * 0.90);
+    float crestT      = smoothstep(0.0, 2.2, vWaveHeight);   // 0=trough, 1=crest
+    float crestSpec   = pow(NdotH, 96.0) * crestT * 1.8;
+    color += uSunColor * crestSpec;
 
     // ----------------------------------------------------------------
     // Beach swash waves
@@ -284,10 +284,15 @@ void main() {
     color = mix(color, foamColor, clamp(beachFoam, 0.0, 1.0));
 
     // ----------------------------------------------------------------
-    // Atmospheric haze
+    // Horizon fog — hides mesh boundary, blends into sky at horizon.
+    // Fully opaque at uFogDist so the ocean appears infinite.
     // ----------------------------------------------------------------
-    float haze = 1.0 - exp(-dist * 0.0025);
-    color = mix(color, vec3(0.62, 0.78, 0.93), haze * 0.30);
+    float fogStart = uFogDist * 0.5;
+    float fog      = smoothstep(fogStart, uFogDist, dist);
+    fog            = fog * fog;   // ease-in so nearby water stays clear
+    vec3  fogColor = mix(vec3(0.52, 0.68, 0.85), vec3(0.60, 0.74, 0.88),
+                         clamp(uSunDir.y, 0.0, 1.0));
+    color = mix(color, fogColor, fog);
 
     // ----------------------------------------------------------------
     // Alpha — depth-based translucency + shore fade

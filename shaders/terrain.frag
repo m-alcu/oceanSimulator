@@ -12,6 +12,7 @@ uniform vec3  uShallowColor;
 uniform vec3  uDeepColor;
 uniform float uTime;
 uniform float uWaterLevel;
+uniform float uFogDist;
 
 out vec4 FragColor;
 
@@ -131,6 +132,17 @@ void main() {
     // Must match the ocean's shoreAlpha range (-5 .. -14) so neither
     // mesh is fully invisible at the same depth simultaneously.
     float alpha = 1.0 - smoothstep(-5.0, -18.0, vZl);
+
+    // ----------------------------------------------------------------
+    // Horizon fog — same density as ocean so both meshes fade together.
+    // ----------------------------------------------------------------
+    float camDist    = length(vWorldPos.xz - uCamPos.xz);
+    float fogStart = uFogDist * 0.5;
+    float fog      = smoothstep(fogStart, uFogDist, camDist);
+    fog            = fog * fog;
+    vec3  fogColor = mix(vec3(0.52, 0.68, 0.85), vec3(0.60, 0.74, 0.88),
+                         clamp(uSunDir.y, 0.0, 1.0));
+    color = mix(color, fogColor, fog);
 
     FragColor = vec4(color, alpha);
 }

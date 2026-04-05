@@ -128,11 +128,11 @@ static Vec3 terrainNormal(float x, float z, float eps = 0.55f) {
 }
 
 inline void buildTerrainMesh(Mesh& mesh,
-                              int   Nx    = 200,
-                              int   Nz    = 260,
-                              float xHalf = 165.f,
+                              int   Nx    = 220,
+                              int   Nz    = 300,
+                              float xHalf = 900.f,
                               float zMin  = -42.f,
-                              float zMax  =  190.f)
+                              float zMax  =  700.f)
 {
     std::vector<Vertex>   verts;
     std::vector<unsigned> indices;

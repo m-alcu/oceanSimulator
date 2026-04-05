@@ -22,6 +22,7 @@ struct OceanParams {
     Vec3  deepColor      = {0.01f, 0.06f, 0.20f};   // dark blue, seen only in deep
     float foamThreshold  = 1.1f;
     float waterLevel     = 0.0f;  // world-space Y of the sea surface
+    float fogDist        = 620.0f; // distance at which fog is fully opaque
 
     float sunElevation   = 0.55f;  // radians from horizon
     float sunAzimuth     = 0.8f;   // radians
